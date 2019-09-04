@@ -2,23 +2,22 @@
 
 VALUE cCIO_Chunk;
 
-void *chunkio_chunk_free(struct cio_chunk *ch)
+void *chunkio_chunk_free(chunkio_chunk *ch)
 {
-    if (ch) {
-        cio_chunk_sync(ch);
-        cio_chunk_close(ch, CIO_FALSE);
+    if (ch->inner) {
+        cio_chunk_sync(ch->inner);
+        cio_chunk_close(ch->inner, CIO_FALSE);
+        ch->inner = NULL;
     }
-}
 
-static VALUE chunkio_chunk_close(struct cio_chunk *chunk)
-{
-    chunkio_chunk_free(chunk);
-    return 0;
+    xfree(ch);
 }
 
 static VALUE chunkio_chunk_allocate_context(VALUE klass)
 {
-    return TypedData_Wrap_Struct(klass, &chunkio_chunk_type, 0);
+    chunkio_chunk *c = (chunkio_chunk *)xmalloc(sizeof(chunkio_chunk));
+    c->closed = 0;
+    return TypedData_Wrap_Struct(klass, &chunkio_chunk_type, c);
 }
 
 static VALUE chunkio_chunk_initialize(VALUE self, VALUE context, VALUE stream, VALUE name)
@@ -29,47 +28,93 @@ static VALUE chunkio_chunk_initialize(VALUE self, VALUE context, VALUE stream, V
 
     struct cio_chunk *chunk = cio_chunk_open(ctx, st, c_name, CIO_OPEN, 1000);
 
-    DATA_PTR(self) = chunk;
+    ((chunkio_chunk*)DATA_PTR(self))->inner = chunk;
     return self;
+}
+
+static VALUE chunkio_chunk_unlink(VALUE self)
+{
+    chunkio_chunk *chunk = NULL;
+    TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk);
+    if (chunk->closed) {
+        rb_raise(rb_eIOError, "IO was already closed");
+    }
+
+    if (cio_chunk_unlink(chunk->inner) == -1) {
+        rb_raise(rb_eIOError, "Failed to unlink");
+    }
+
+    chunk->closed = 1;          /* mark as closed */
+    return Qnil;
+}
+
+static VALUE chunkio_chunk_close(VALUE self)
+{
+    chunkio_chunk *chunk = NULL;
+    int type;
+    struct cio_file *cf;
+
+    TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk);
+    if (!chunk->closed) {
+        type = chunk->inner->st->type;
+        if (type == CIO_STORE_FS) {
+            /* COPY form chunkio cio_file.c */
+            chunk->inner->st->type;
+            cf = (struct cio_file *)chunk->inner->backend;
+            close(cf->fd);
+            cf->fd = 0;
+        }
+        chunk->closed = 1;      /* mark as close */
+
+        return Qnil;
+    }
+
+    return Qnil;
 }
 
 static VALUE chunkio_chunk_write(VALUE self, VALUE buf)
 {
-    struct cio_chunk *chunk;
-    TypedData_Get_Struct(self, struct cio_chunk, &chunkio_chunk_type, chunk);
+    chunkio_chunk *chunk = NULL;
+    TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk);
     ssize_t len = RSTRING_LEN(buf);
+    if (chunk->closed) {
+        rb_raise(rb_eIOError, "IO was already closed");
+    }
 
-    cio_chunk_write(chunk, (void *)RSTRING_PTR(buf), len);
+    cio_chunk_write(chunk->inner, (void *)RSTRING_PTR(buf), len);
     return INT2NUM(len);
 }
 
-static VALUE chunkio_chunk_write_at(VALUE self, VALUE buf, VALUE offset)
-{
-    struct cio_chunk *chunk;
-    TypedData_Get_Struct(self, struct cio_chunk, &chunkio_chunk_type, chunk);
-    ssize_t len = RSTRING_LEN(buf);
-    off_t os = NUM2INT(offset);
+/* static VALUE chunkio_chunk_write_at(VALUE self, VALUE buf, VALUE offset) */
+/* { */
+/*     chunkio_chunk *chunk = NULL; */
+/*     TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk); */
+/*     ssize_t len = RSTRING_LEN(buf); */
+/*     off_t os = NUM2INT(offset); */
 
-    int ret = cio_chunk_write_at(chunk, os, (void *)RSTRING_PTR(buf), len);
-    return INT2NUM(len);
-}
+/*     int ret = cio_chunk_write_at(chunk, os, (void *)RSTRING_PTR(buf), len); */
+/*     return INT2NUM(len); */
+/* } */
 
-static VALUE chunkio_chunk_size(VALUE self)
+static VALUE chunkio_chunk_bytesize(VALUE self)
 {
-    struct cio_chunk *chunk;
-    TypedData_Get_Struct(self, struct cio_chunk, &chunkio_chunk_type, chunk);
-    size_t size = cio_chunk_get_content_size(chunk);
+    chunkio_chunk *chunk = NULL;
+    TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk);
+    size_t size = cio_chunk_get_content_size(chunk->inner);
 
     return INT2NUM(size);
 }
 
 static VALUE chunkio_chunk_set_metadata(VALUE self, VALUE buf)
 {
-    struct cio_chunk *chunk;
-    TypedData_Get_Struct(self, struct cio_chunk, &chunkio_chunk_type, chunk);
-    ssize_t len = RSTRING_LEN(buf);
+    chunkio_chunk *chunk = NULL;
+    TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk);
+    if (chunk->closed) {
+        rb_raise(rb_eIOError, "IO was already closed");
+    }
 
-    int ret = cio_meta_write(chunk, (void *)RSTRING_PTR(buf), len);
+    ssize_t len = RSTRING_LEN(buf);
+    int ret = cio_meta_write(chunk->inner, (void *)RSTRING_PTR(buf), len);
     if (ret == -1) {
         rb_raise(rb_eStandardError, "failed to set metadata");
     }
@@ -78,44 +123,62 @@ static VALUE chunkio_chunk_set_metadata(VALUE self, VALUE buf)
 
 static VALUE chunkio_chunk_metadata(VALUE self)
 {
-    struct cio_chunk *chunk;
-    TypedData_Get_Struct(self, struct cio_chunk, &chunkio_chunk_type, chunk);
+    chunkio_chunk *chunk = NULL;
+    TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk);
+    if (chunk->closed) {
+        rb_raise(rb_eIOError, "IO was already closed");
+    }
 
     char *buf = NULL;
     size_t size = 0;
-    int ret = cio_meta_read(chunk, &buf, &size);
+
+    /* cio_meta_chunk return -1 if size is 0... */
+    if (cio_meta_size(chunk->inner) == 0) {
+        return rb_str_new(0, 0);
+    }
+
+    int ret = cio_meta_read(chunk->inner, &buf, &size);
     if (ret == -1) {
         rb_raise(rb_eStandardError, "failed to get metadata");
     }
     return rb_usascii_str_new(buf, size);
 }
 
-static VALUE chunkio_chunk_pos(VALUE self)
-{
-    struct cio_chunk *chunk;
-    TypedData_Get_Struct(self, struct cio_chunk, &chunkio_chunk_type, chunk);
-    size_t pos = cio_chunk_get_content_end_pos(chunk);
+/* static VALUE chunkio_chunk_pos(VALUE self) */
+/* { */
+/*     chunkio_chunk *chunk; */
+/*     TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk); */
+/*     size_t pos = cio_chunk_get_content_end_pos(chunk); */
 
-    return INT2NUM(pos);
-}
+/*     return INT2NUM(pos); */
+/* } */
 
 static VALUE chunkio_chunk_sync(VALUE self)
 {
-    struct cio_chunk *chunk;
-    TypedData_Get_Struct(self, struct cio_chunk, &chunkio_chunk_type, chunk);
-    size_t pos = cio_chunk_sync(chunk);
+    chunkio_chunk *chunk;
+    TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk);
+    if (chunk->closed) {
+        rb_raise(rb_eIOError, "IO was already closed");
+    }
 
+    size_t ret = cio_chunk_sync(chunk->inner);
+    if (ret == -1) {
+        rb_raise(rb_eStandardError, "failed to sync");
+    }
     return Qnil;
 }
 
 static VALUE chunkio_chunk_get_data(VALUE self)
 {
-    struct cio_chunk *chunk;
-    TypedData_Get_Struct(self, struct cio_chunk, &chunkio_chunk_type, chunk);
+    chunkio_chunk *chunk;
+    TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk);
+    if (chunk->closed) {
+        rb_raise(rb_eIOError, "IO was already closed");
+    }
 
     char *buf = NULL;
     size_t size = 0;
-    int ret = cio_chunk_get_content(chunk, &buf, &size);
+    int ret = cio_chunk_get_content(chunk->inner, &buf, &size);
     if (ret == -1) {
         rb_raise(rb_eStandardError, "failed to get data");
     }
@@ -125,10 +188,13 @@ static VALUE chunkio_chunk_get_data(VALUE self)
 
 static VALUE chunkio_chunk_tx_begin(VALUE self)
 {
-    struct cio_chunk *chunk;
-    TypedData_Get_Struct(self, struct cio_chunk, &chunkio_chunk_type, chunk);
+    chunkio_chunk *chunk;
+    TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk);
+    if (chunk->closed) {
+        rb_raise(rb_eIOError, "IO was already closed");
+    }
 
-    int ret = cio_chunk_tx_begin(chunk);
+    int ret = cio_chunk_tx_begin(chunk->inner);
     if (ret == -1) {
         rb_raise(rb_eStandardError, "failed to begin transaction");
     }
@@ -138,10 +204,13 @@ static VALUE chunkio_chunk_tx_begin(VALUE self)
 
 static VALUE chunkio_chunk_tx_commit(VALUE self)
 {
-    struct cio_chunk *chunk;
-    TypedData_Get_Struct(self, struct cio_chunk, &chunkio_chunk_type, chunk);
+    chunkio_chunk *chunk;
+    TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk);
+    if (chunk->closed) {
+        rb_raise(rb_eIOError, "IO was already closed");
+    }
 
-    int ret = cio_chunk_tx_commit(chunk);
+    int ret = cio_chunk_tx_commit(chunk->inner);
     if (ret == -1) {
         rb_raise(rb_eStandardError, "failed to commit transaction");
     }
@@ -150,10 +219,13 @@ static VALUE chunkio_chunk_tx_commit(VALUE self)
 
 static VALUE chunkio_chunk_tx_rollback(VALUE self)
 {
-    struct cio_chunk *chunk;
-    TypedData_Get_Struct(self, struct cio_chunk, &chunkio_chunk_type, chunk);
+    chunkio_chunk *chunk;
+    TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk);
+    if (chunk->closed) {
+        rb_raise(rb_eIOError, "IO was already closed");
+    }
 
-    int ret = cio_chunk_tx_rollback(chunk);
+    int ret = cio_chunk_tx_rollback(chunk->inner);
     if (ret == -1) {
         rb_raise(rb_eStandardError, "failed to rollback transaction");
     }
@@ -167,8 +239,9 @@ void Init_chunkio_chunk(VALUE mChunkIO)
 
     rb_define_method(cCIO_Chunk, "initialize", chunkio_chunk_initialize, 3);
     rb_define_method(cCIO_Chunk, "write", chunkio_chunk_write, 1);
-    rb_define_method(cCIO_Chunk, "write_at", chunkio_chunk_write_at, 2);
-    rb_define_method(cCIO_Chunk, "size", chunkio_chunk_size, 0);
+    rb_define_method(cCIO_Chunk, "unlink", chunkio_chunk_unlink, 0);
+    rb_define_method(cCIO_Chunk, "close", chunkio_chunk_close, 0);
+    rb_define_method(cCIO_Chunk, "bytesize", chunkio_chunk_bytesize, 0);
     rb_define_method(cCIO_Chunk, "set_metadata", chunkio_chunk_set_metadata, 1);
     rb_define_method(cCIO_Chunk, "metadata", chunkio_chunk_metadata, 0);
     rb_define_method(cCIO_Chunk, "sync", chunkio_chunk_sync, 0);
@@ -176,5 +249,5 @@ void Init_chunkio_chunk(VALUE mChunkIO)
     rb_define_method(cCIO_Chunk, "tx_begin", chunkio_chunk_tx_begin, 0);
     rb_define_method(cCIO_Chunk, "tx_commit", chunkio_chunk_tx_commit, 0);
     rb_define_method(cCIO_Chunk, "tx_rollback", chunkio_chunk_tx_rollback, 0);
-    rb_define_method(cCIO_Chunk, "close", chunkio_chunk_close, 0);
+    /* rb_define_method(cCIO_Chunk, "write_at", chunkio_chunk_write_at, 2); */
 }

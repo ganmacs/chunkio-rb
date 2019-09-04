@@ -12,6 +12,7 @@ void *chunkio_context_free(struct cio_ctx *ctx)
     if (ctx) {
         free(ctx->root_path);
         free(ctx);
+        ctx = NULL;
     }
 }
 

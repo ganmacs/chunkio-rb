@@ -14,9 +14,15 @@
 #include <chunkio/cio_scan.h>
 #include <chunkio/cio_utils.h>
 
+typedef struct chunkio_chunk {
+    struct cio_chunk* inner;
+    int closed;
+} chunkio_chunk;
+
+
 void *chunkio_context_free(struct cio_ctx *ctx);
 void *chunkio_stream_free(struct cio_stream *st);
-void *chunkio_chunk_free(struct cio_chunk *ch);
+void *chunkio_chunk_free(chunkio_chunk *ch);
 
 static const rb_data_type_t chunkio_context_type =
     {
