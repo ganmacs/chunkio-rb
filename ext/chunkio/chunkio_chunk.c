@@ -56,6 +56,7 @@ static VALUE chunkio_chunk_close(VALUE self)
 
     TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk);
     if (!chunk->closed) {
+        cio_chunk_sync(chunk->inner);
         type = chunk->inner->st->type;
         if (type == CIO_STORE_FS) {
             /* COPY form chunkio cio_file.c */
