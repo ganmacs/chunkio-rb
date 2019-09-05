@@ -142,7 +142,8 @@ static VALUE chunkio_chunk_metadata(VALUE self)
     if (ret == -1) {
         rb_raise(rb_eStandardError, "failed to get metadata");
     }
-    return rb_usascii_str_new(buf, size);
+
+    return rb_str_new(buf, size);
 }
 
 /* static VALUE chunkio_chunk_pos(VALUE self) */
@@ -184,7 +185,7 @@ static VALUE chunkio_chunk_get_data(VALUE self)
         rb_raise(rb_eStandardError, "failed to get data");
     }
 
-    return rb_usascii_str_new(buf, size);
+    return rb_str_new(buf, size);
 }
 
 static VALUE chunkio_chunk_tx_begin(VALUE self)
