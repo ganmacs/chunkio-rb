@@ -2,17 +2,8 @@
 #define RB_CHUNKIO_CHUNKIO_H
 
 #include <ruby.h>
-
 #include <chunkio/chunkio.h>
-#include <chunkio/chunkio_compat.h>
-#include <crc32/crc32.h>
-#include <chunkio/cio_crc32.h>
-#include <chunkio/cio_log.h>
-#include <chunkio/cio_stream.h>
-#include <chunkio/cio_chunk.h>
 #include <chunkio/cio_meta.h>
-#include <chunkio/cio_scan.h>
-#include <chunkio/cio_utils.h>
 
 typedef struct chunkio_chunk {
     struct cio_chunk* inner;
