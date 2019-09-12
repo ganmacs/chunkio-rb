@@ -25,6 +25,9 @@ static VALUE chunkio_chunk_initialize(VALUE self, VALUE context, VALUE stream, V
     struct cio_ctx *ctx = UnwrapChunkIOContext(context);
     struct cio_stream *st = UnwrapChunkIOStream(stream);
     const char *c_name = RSTRING_PTR(name);
+    if (strlen(c_name) == 0) {
+        rb_raise(rb_eStandardError, "chunk name is not allowed empty string");
+    }
 
     struct cio_chunk *chunk = cio_chunk_open(ctx, st, c_name, CIO_OPEN, 1000);
 

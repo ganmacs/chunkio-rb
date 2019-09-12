@@ -40,8 +40,14 @@ static VALUE allocate_context(VALUE klass)
 static VALUE chunkio_context_initialize(VALUE self, VALUE root)
 {
     char *p = RSTRING_PTR(root);
-    /* struct cio_ctx *ctx = cio_create(p, log_cb, CIO_DEBUG, 0); /\* TODO: flags, LOG *\/ */
-    struct cio_ctx *ctx = cio_create(p, NULL, CIO_DEBUG, 0); /* TODO: flags, LOG */
+    if (strlen(p) == 0) {
+        rb_raise(rb_eStandardError, "Context root path is not allowed empty string");
+    }
+
+    /* permission is fixed for now */
+    rb_funcall(rb_const_get(rb_cObject, rb_intern("FileUtils")), rb_intern("mkdir_p"), 1, root);
+
+    struct cio_ctx *ctx = cio_create(p, log_cb, CIO_INFO, 0);
     if (!ctx) {
         rb_raise(rb_eStandardError, "failed to create cio_ctx");
     }

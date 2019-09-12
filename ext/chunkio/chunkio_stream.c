@@ -4,7 +4,6 @@ VALUE cCIO_Stream;
 
 void *chunkio_stream_free(struct cio_stream *st)
 {
-
     /*
       Don't call cio_chunk_close_stream(st).
       cio_chunk is freed by chunkio_chunk.
@@ -34,6 +33,10 @@ static VALUE allocate_stream(VALUE klass)
 static VALUE chunkio_stream_initialize(VALUE self, VALUE context, VALUE name)
 {
     char *stream_name = RSTRING_PTR(name);
+    if (strlen(stream_name) == 0) {
+        rb_raise(rb_eStandardError, "stream_name is not allowed empty string");
+    }
+
     struct cio_ctx *ctx = UnwrapChunkIOContext(context);
     struct cio_stream *st = cio_stream_create(ctx, stream_name, CIO_STORE_FS); /* TODO CIO_STORE_FS */
     if (!st) {
