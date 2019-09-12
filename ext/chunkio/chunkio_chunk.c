@@ -4,7 +4,7 @@ VALUE cCIO_Chunk;
 
 void *chunkio_chunk_free(chunkio_chunk *ch)
 {
-    if (ch->inner) {
+    if (ch->inner != NULL) {
         cio_chunk_sync(ch->inner);
         cio_chunk_close(ch->inner, CIO_FALSE);
         ch->inner = NULL;
@@ -16,6 +16,7 @@ void *chunkio_chunk_free(chunkio_chunk *ch)
 static VALUE chunkio_chunk_allocate_context(VALUE klass)
 {
     chunkio_chunk *c = (chunkio_chunk *)xmalloc(sizeof(chunkio_chunk));
+    c->inner = NULL;
     c->closed = 0;
     c->sync_mode = 0;
     return TypedData_Wrap_Struct(klass, &chunkio_chunk_type, c);
