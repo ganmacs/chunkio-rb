@@ -8,6 +8,7 @@
 typedef struct chunkio_chunk {
     struct cio_chunk* inner;
     int closed;
+    int sync_mode;              /* 0 is false, 1 is true */
 } chunkio_chunk;
 
 
