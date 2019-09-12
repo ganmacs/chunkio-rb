@@ -32,7 +32,7 @@ static VALUE allocate_stream(VALUE klass)
 
 static VALUE chunkio_stream_initialize(VALUE self, VALUE context, VALUE name)
 {
-    char *stream_name = RSTRING_PTR(name);
+    char *stream_name = StringValuePtr(name);
     if (strlen(stream_name) == 0) {
         rb_raise(rb_eStandardError, "stream_name is not allowed empty string");
     }

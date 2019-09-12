@@ -39,7 +39,7 @@ static VALUE allocate_context(VALUE klass)
 
 static VALUE chunkio_context_initialize(VALUE self, VALUE root)
 {
-    char *p = RSTRING_PTR(root);
+    char *p = StringValuePtr(root);
     if (strlen(p) == 0) {
         rb_raise(rb_eStandardError, "Context root path is not allowed empty string");
     }

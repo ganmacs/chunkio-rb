@@ -26,7 +26,7 @@ static VALUE chunkio_chunk_initialize(VALUE self, VALUE context, VALUE stream, V
 {
     struct cio_ctx *ctx = UnwrapChunkIOContext(context);
     struct cio_stream *st = UnwrapChunkIOStream(stream);
-    const char *c_name = RSTRING_PTR(name);
+    const char *c_name = StringValuePtr(name);
     if (strlen(c_name) == 0) {
         rb_raise(rb_eStandardError, "chunk name is not allowed empty string");
     }
@@ -82,10 +82,12 @@ static VALUE chunkio_chunk_write(VALUE self, VALUE buf)
 {
     chunkio_chunk *chunk = NULL;
     TypedData_Get_Struct(self, chunkio_chunk, &chunkio_chunk_type, chunk);
-    ssize_t len = RSTRING_LEN(buf);
     if (chunk->closed) {
         rb_raise(rb_eIOError, "IO was already closed");
     }
+    Check_Type(buf, T_STRING);
+
+    ssize_t len = RSTRING_LEN(buf);
     cio_chunk_write(chunk->inner, (void *)RSTRING_PTR(buf), len);
 
     if (chunk->sync_mode) {
@@ -125,6 +127,7 @@ static VALUE chunkio_chunk_set_metadata(VALUE self, VALUE buf)
         rb_raise(rb_eIOError, "IO was already closed");
     }
 
+    Check_Type(buf, T_STRING);
     ssize_t len = RSTRING_LEN(buf);
     int ret = cio_meta_write(chunk->inner, (void *)RSTRING_PTR(buf), len);
     if (ret == -1) {
