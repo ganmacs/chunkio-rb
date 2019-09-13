@@ -6,13 +6,20 @@ void *chunkio_chunk_free(chunkio_chunk *ch)
 {
     if (ch->inner != NULL) {
         /*
-          cio_stream can be freed before this line.
-          but cio_chunk_close and cio_chunk_sync needs to stream->type.
+          `cio_stream` and `cio_ctx` can be freed before this line.
+          but cio_chunk_close and cio_chunk_sync needs them during freeing itself.
           So creating dummy object to work correctly.
-         */
+        */
         struct cio_stream st;
         st.type = CIO_STORE_FS;
+        st.name = (char *)"stream";
         ch->inner->st = &st;
+
+        struct cio_ctx ct;
+        ct.flags = CIO_CHECKSUM;
+        ct.log_cb = NULL;
+        ch->inner->ctx = &ct;
+
         cio_chunk_sync(ch->inner);
         cio_chunk_close(ch->inner, CIO_FALSE);
         ch->inner = NULL;
