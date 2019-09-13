@@ -25,12 +25,15 @@ void *chunkio_chunk_free(chunkio_chunk *ch)
         ch->inner = NULL;
     }
 
-    xfree(ch);
+    if (ch != NULL) {
+        xfree(ch);
+        ch = NULL;
+    }
 }
 
 static VALUE chunkio_chunk_allocate_context(VALUE klass)
 {
-    chunkio_chunk *c = (chunkio_chunk *)xmalloc(sizeof(chunkio_chunk));
+    chunkio_chunk *c = (chunkio_chunk *)xmalloc(sizeof(struct chunkio_chunk_type));
     c->inner = NULL;
     c->closed = 0;
     c->sync_mode = 0;
