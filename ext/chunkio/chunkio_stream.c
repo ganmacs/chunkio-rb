@@ -10,7 +10,6 @@ void *chunkio_stream_free(struct cio_stream *st)
      */
     if (st) {
         /* destroy stream */
-        mk_list_del(&st->_head);
         free(st->name);
         free(st);
         st = NULL;
