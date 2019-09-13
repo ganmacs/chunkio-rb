@@ -5,7 +5,7 @@
 #include <chunkio/chunkio.h>
 #include <chunkio/cio_meta.h>
 
-typedef struct chunkio_chunk {
+typedef struct chunkio_chunk_type {
     struct cio_chunk* inner;
     int closed;
     int sync_mode;              /* 0 is false, 1 is true */
