@@ -47,7 +47,8 @@ static VALUE chunkio_context_initialize(VALUE self, VALUE root)
     /* permission is fixed for now */
     rb_funcall(rb_const_get(rb_cObject, rb_intern("FileUtils")), rb_intern("mkdir_p"), 1, root);
 
-    struct cio_ctx *ctx = cio_create(p, log_cb, CIO_INFO, 0);
+    /* struct cio_ctx *ctx = cio_create(p, log_cb, CIO_DEBUG, 0); /\* flag *\/ */
+    struct cio_ctx *ctx = cio_create(p, 0, CIO_DEBUG, 0); /* flag */
     if (!ctx) {
         rb_raise(rb_eStandardError, "failed to create cio_ctx");
     }
