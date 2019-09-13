@@ -32,6 +32,9 @@ static VALUE chunkio_chunk_initialize(VALUE self, VALUE context, VALUE stream, V
     }
 
     struct cio_chunk *chunk = cio_chunk_open(ctx, st, c_name, CIO_OPEN, 1000);
+    if (chunk == NULL) {
+        rb_raise(rb_eStandardError, "Failed to create chunk");
+    }
 
     ((chunkio_chunk*)DATA_PTR(self))->inner = chunk;
     return self;
