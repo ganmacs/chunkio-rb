@@ -76,11 +76,13 @@ RSpec.describe ChunkIO::Chunk do
       end
 
       it 'load all data' do
-        c = described_class.new(cio_context, cio_stream, chunk_name)
-        expect(c.data).to eq(data_body)
-        expect(c.metadata).to eq(meta_body)
-      ensure
-        c.unlink
+        begin
+          c = described_class.new(cio_context, cio_stream, chunk_name)
+          expect(c.data).to eq(data_body)
+          expect(c.metadata).to eq(meta_body)
+        ensure
+          c.unlink
+        end
       end
 
       context 'when invalid data format' do
