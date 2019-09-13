@@ -274,8 +274,10 @@ static VALUE chunkio_chunk_sync_mode_assign(VALUE self, VALUE bool) {
 
     if (bool == Qtrue) {
         chunk->sync_mode = 1;
-    } else {
+    } else if (bool == Qfalse){
         chunk->sync_mode = 0;
+    } else {
+        rb_raise(rb_eTypeError, "expected true or false");
     }
 
     return Qnil;
