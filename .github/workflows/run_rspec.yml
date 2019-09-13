@@ -1,4 +1,4 @@
-name: run rspec
+name: Run specs
 on: [push]
 jobs:
   build:

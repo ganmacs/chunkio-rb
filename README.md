@@ -1,5 +1,7 @@
 # ChunkI/O
 
+[![](https://github.com/ganmacs/chunkio-rb/workflows/Run%20specs/badge.svg)](https://github.com/ganmacs/chunkio-rb/actions)
+
 This gem is wrapper around [ChunkI/O](https://github.com/edsiper/chunkio).
 
 ## Installation
