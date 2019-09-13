@@ -216,7 +216,7 @@ static VALUE chunkio_chunk_tx_begin(VALUE self)
 
     int ret = cio_chunk_tx_begin(chunk->inner);
     if (ret == -1) {
-        rb_raise(rb_eStandardError, "failed to begin transaction");
+        rb_raise(rb_eStandardError, "Failed to begin transaction");
     }
 
     return Qnil;
@@ -254,7 +254,7 @@ static VALUE chunkio_chunk_tx_rollback(VALUE self)
 
     int ret = cio_chunk_tx_rollback(chunk->inner);
     if (ret == -1) {
-        rb_raise(rb_eStandardError, "failed to rollback transaction");
+        rb_raise(rb_eStandardError, "Failed to rollback transaction");
     }
     return Qnil;
 }
