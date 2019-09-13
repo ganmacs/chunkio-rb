@@ -9,7 +9,7 @@ message "Building chunkio\n"
 recipe = MiniPortileCMake.new('chunkio', 'v0.0.1')
 
 recipe.files << {
-  url: 'https://github.com/ganmacs/chunkio/tarball/6a1bd00a455b410085dbae7bbf29edc6139b3e29',
+  url: 'https://github.com/ganmacs/chunkio/tarball/612777c764057c53988db3899d88adce6fe742a1',
 }
 
 class << recipe
