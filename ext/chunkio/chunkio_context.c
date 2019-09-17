@@ -64,6 +64,14 @@ static VALUE chunkio_context_root_path(VALUE self)
     return rb_str_new2(ctx->root_path);
 }
 
+static VALUE chunkio_context_max_chunks_assign(VALUE self, VALUE v)
+{
+    struct cio_ctx *ctx;
+    TypedData_Get_Struct(self, struct cio_ctx, &chunkio_context_type, ctx);
+
+    cio_set_max_chunks_up(ctx, NUM2INT(v));
+    return self;
+}
 
 void Init_chunkio_context(VALUE mChunkIO)
 {
@@ -72,4 +80,5 @@ void Init_chunkio_context(VALUE mChunkIO)
 
     rb_define_method(cCIO_Context, "initialize", chunkio_context_initialize, 1);
     rb_define_method(cCIO_Context, "root_path", chunkio_context_root_path, 0);
+    rb_define_method(cCIO_Context, "max_chunks=", chunkio_context_max_chunks_assign, 1);
 }
